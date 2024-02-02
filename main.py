@@ -9,8 +9,8 @@ import datetime
 # document_img = imutils.resize(document_img, width=460)
 
 def rotateImg(img):
+    #preprocess image for hough lines
     src = imutils.resize(img, width=460)
-    #hough transform, tried before, gives sometimes perpendicular images
     gray = cv2.cvtColor(src,cv2.COLOR_BGR2GRAY)
     kernel = np.ones((5,5),np.float32)/25
     gray = cv2.filter2D(gray,-1,kernel)
@@ -20,6 +20,7 @@ def rotateImg(img):
 
     lines = cv2.HoughLines(edges,1,np.pi/180,15)
     angles = list()
+    #iterate through lines to get a number of angles
     for i in range(8):
         for rho,theta in lines[i]:
             a = np.cos(theta)
@@ -65,13 +66,17 @@ def rotateImg(img):
 
 
 def evaluate():
+    #initialize app
     cap = cv2.VideoCapture(0)
     model = tf.keras.models.load_model("mobilenetv2ID.keras")
     while True:
+        #get the current time for predictions saves
         currentTime = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         ret, src = cap.read()
+        #process the input image
         img_rot = rotateImg(src)
         img = cv2.resize(img_rot, (224,224))
+        #give the image to the NN for inference
         imgpred = np.expand_dims(img, axis=0)  # Add a batch dimension
         pred = model.predict(imgpred).flatten()
         pred = tf.nn.sigmoid(pred)
@@ -79,15 +84,19 @@ def evaluate():
         cv2.imshow("Camera", src)
         # print("pred: ", pred[0])
         if pred[0] == 1:
+            #if the prediction says it is an ID card, save it
             print("ID Card detected! Saving it to PC!")
             try:
+                #create prediction folder if it does not exist already
                 os.mkdir("pred")
             except:
                 pass
             filename = "pred/idpred_{date}.jpg".format(date=currentTime)
             # print(filename)
+            #save the rotated image
             cv2.imwrite(filename, img_rot)
         if cv2.waitKey(1) & 0xFF == ord('q'):
+            #if q button was pressed, exit
             cap.release()
             cv2.destroyAllWindows()
             # exit()
